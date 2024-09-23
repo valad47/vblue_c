@@ -129,7 +129,8 @@ static void app_activate(GtkApplication *app, gpointer user_data){
     GtkWidget *button_disconnect = make_button((struct button_args){
         .label = "Disconnect",
         .margin_top = 10,
-        .width = 200, 40
+        .width = 200, 40,
+        .activate = disconnect_button_cb
     });
     GtkWidget *button_remove = make_button((struct button_args){
         .label = "Remove",
@@ -248,6 +249,21 @@ void connect_button_cb(GtkButton *self, gpointer data){
     perror("Device was not found");
 }
 
+void disconnect_button_cb(GtkButton *self, gpointer data){
+    GtkListBoxRow *selected = gtk_list_box_get_selected_row(GTK_LIST_BOX(list));
+    GList *devs_copy = devices;
+    if(selected != NULL)
+        while(devs_copy){
+            struct list_row *row = devs_copy->data;
+            if(GTK_LIST_BOX_ROW(row->row) == selected){
+                binc_device_disconnect(row->dev);
+                return;
+            }
+
+            devs_copy = devs_copy->next;
+        }
+    perror("Device was not found");
+}
 
 
 static void app_shutdown(GtkApplication *app, gpointer user_data){
