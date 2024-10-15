@@ -42,11 +42,12 @@ struct list_row{
     Device* dev;
 };
 
-gboolean get_devs(gpointer user_data);
+void get_devs(void);
 void discovery_cb(Adapter *adapter, Device *device);
 void device_remove_cb(Adapter *adapter, Device *device);
 void connect_button_cb(GtkButton *self, gpointer data);
 void disconnect_button_cb(GtkButton *self, gpointer data);
+void remove_button_cb(GtkButton *self, gpointer data);
 
 static void set_margin(GtkWidget *widget, struct margin margin){
     gtk_widget_set_margin_start(widget, margin.margin_start);
@@ -135,7 +136,8 @@ static void app_activate(GtkApplication *app, gpointer user_data){
     GtkWidget *button_remove = make_button((struct button_args){
         .label = "Remove",
         .margin_top = 10,
-        .width = 200, 40
+        .width = 200, 40,
+	.activate = remove_button_cb
     });
 
     GtkWidget *connected = gtk_label_new("Connected: [NULL]");
@@ -166,6 +168,8 @@ static void app_activate(GtkApplication *app, gpointer user_data){
     binc_adapter_power_on(adapter);
     binc_adapter_start_discovery(adapter);
     binc_adapter_set_discovery_cb(adapter, discovery_cb);
+    binc_adapter_set_device_removal_cb(adapter, device_remove_cb);
+    get_devs();
 }
 
 void make_row(struct list_row *list_row){
@@ -176,19 +180,12 @@ void make_row(struct list_row *list_row){
     gtk_list_box_append(GTK_LIST_BOX(list), list_row->row);
 }
 
-gboolean get_devs(gpointer user_data){
+void get_devs(void){
     GList *discovered = binc_adapter_get_devices(adapter);
     while(discovered){
         Device *dev = discovered->data;
         GList *devs_copy = devices;
-        while(devs_copy){
-            if(strcmp(binc_device_get_address(((struct list_row*)devs_copy->data)->dev), binc_device_get_address(dev)) == 0){
-                goto next_device;
-            }
-            devs_copy = devs_copy->next;
-        }
-        struct list_row *dev_row = malloc(sizeof(struct list_row));
-        memset(dev_row, 0, sizeof(struct list_row));
+        struct list_row *dev_row = g_new0(struct list_row, 1);
         dev_row->dev = dev;
         make_row(dev_row);
         if(!devices){
@@ -202,11 +199,20 @@ next_device:
     }
     printf("\rList rows: %d", g_list_length(devices));
     fflush(stdout);
-    return TRUE;
 }
 
 void discovery_cb(Adapter *adapter, Device *device){
     printf("New device discovered: %s\n", binc_device_get_address(device));
+    GList *devs_copy = devices;
+    while(devs_copy){
+        struct list_row* row = devs_copy->data;
+        if(row->dev == device) {
+	    return;
+	}
+
+	devs_copy = devs_copy->next;
+    }
+
     struct list_row *row = g_new0(struct list_row, 1);
     row->dev = device;
     make_row(row);
@@ -222,16 +228,18 @@ void device_remove_cb(Adapter *adapter, Device *device){
     g_assert(adapter != NULL);
     g_assert(device != NULL);
 
-    struct list_row* row;
     GList *devs_copy = devices;
     while(devs_copy){
-        row = (struct list_row*)devs_copy->data;
-        if((strcmp(binc_device_get_address(((struct list_row*)devs_copy->data)->dev), binc_device_get_address(device)) == 0)){
-            g_list_remove(devs_copy, row);
+        struct list_row* row = devs_copy->data;
+        if(row->dev == device){
+            void* _ = g_list_remove(devices, row);
+            gtk_list_box_remove(GTK_LIST_BOX(list), row->row);
+	    return;
         }
 
         devs_copy = devs_copy->next;
     }
+    printf("Failed to remove device from list\n");
 }
 
 void connect_button_cb(GtkButton *self, gpointer data){
@@ -265,6 +273,24 @@ void disconnect_button_cb(GtkButton *self, gpointer data){
     perror("Device was not found");
 }
 
+void remove_button_cb(GtkButton *self, gpointer data){
+    GtkListBoxRow *selected = gtk_list_box_get_selected_row(GTK_LIST_BOX(list));
+    GList *devs_copy = devices;
+    if(selected != NULL) {
+        while(devs_copy) {
+            struct list_row *row = devs_copy->data;
+	    if(GTK_LIST_BOX_ROW(row->row) == selected){
+	        binc_adapter_remove_device(adapter, row->dev);
+		void* _ = g_list_remove(devices, row);
+		gtk_list_box_remove(GTK_LIST_BOX(list), row->row);
+		return;
+	    }
+
+	    devs_copy = devs_copy->next;
+        }
+    }
+    perror("Device was not found");
+}
 
 static void app_shutdown(GtkApplication *app, gpointer user_data){
     g_list_free(devices);
