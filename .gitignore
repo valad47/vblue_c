@@ -2,4 +2,3 @@ build
 .cache
 compile_commands.json
 vgcore.*
-bluez_inc
