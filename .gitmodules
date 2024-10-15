@@ -1,3 +1,2 @@
 [submodule "bluez_inc"]
-	path = bluez_inc
-	url = https://github.com/weliem/bluez_inc.git
+	url = https://github.com/VALAD47/bluez_inc
