@@ -10,6 +10,7 @@ pkgs.mkShell {
     ];
     buildInputs = with pkgs; [
         gtk4.dev
+		raylib
     ];
     shellHook = ''
         echo Entered development enviroment...
