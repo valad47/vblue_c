@@ -49,15 +49,19 @@ void disconnect_button_cb();
 void remove_button_cb();
 
 void init_button_array(){
-  buttons = malloc(sizeof(ButtonArray));
-  memset(buttons, 0, sizeof(ButtonArray));
-  buttons->buttons = malloc(sizeof(Button));
+  buttons = MemAlloc(sizeof(ButtonArray));
+  buttons->buttons = MemAlloc(sizeof(Button));
   buttons->size = 1;
 }
 
 void insert_button(Button button) {
   if(buttons->taken == buttons->size){
-    realloc(buttons->buttons, buttons->size*2 * sizeof(Button));
+    void* newPtr = MemRealloc(buttons->buttons, sizeof(Button)*buttons->size*2);
+    if(newPtr == NULL) {
+      exit(1);
+    } else {
+      buttons->buttons = newPtr;
+    }
     buttons->size *= 2;
   }
   buttons->buttons[buttons->taken] = button;
@@ -103,7 +107,7 @@ void ProceedButtons(void) {
     }*/
 
 void button1_cb(){
-  CloseWindow();
+
 }
 
 void app_activate(){
@@ -214,7 +218,7 @@ int main(int argc, char **argv){
       
       EndDrawing();
     }
-
+    buttons->taken = 0;
     //free_buttons();
     
     CloseWindow();
