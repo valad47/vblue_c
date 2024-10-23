@@ -33,26 +33,34 @@ typedef struct {
   int taken;
 } RecArray;
 
+typedef struct device_list{
+  const char *label;
+  Device *device;
+  struct device_list *next;
+  struct device_list *prev;
+} device_list;
+
+struct button_args{
+    const char *label;
+    void (*activate)(void);
+    int posX;
+    int posY;
+    int width;
+    int height;
+    Color color;
+};
+
 //
 // Variable definitions
 //
 
-GList *devices = nullptr;
+device_list *devices = nullptr;
+bool devices_lock = false;
 Adapter *adapter = nullptr;
 GDBusConnection *dbusConnection = nullptr;
 ButtonArray *buttons = nullptr;
 RecArray *boxes = nullptr;
 bool ExitProgram = false;
-
-struct button_args{
-    const char *label;
-    void (*activate)(void);
-  int posX;
-  int posY;
-  int width;
-  int height;
-    Color color;
-};
 
 void get_devs(void);
 void button1_cb(void);
@@ -99,6 +107,49 @@ void insert_button(Button button) {
   }
   buttons->buttons[buttons->taken] = button;
   buttons->taken++;
+}
+
+void insert_device(device_list dev) {
+  while(device_lock);
+  devices_lock = true;
+  
+  if(devices == nullptr) {
+    devices = MemAlloc(device_list);
+    devices->next = devices;
+    devices->prev = devices;
+  }
+  device_list *last_dev = devices->prev;
+  last_dev->next = MemAlloc(sizeof(device_list));
+  memcpy(last_dev->next, &dev, sizeof(device_list));
+
+  last_dev->next->next = devices;
+  devices->prev = last_dev->next;
+  devices_lock = false;
+}
+
+void remove_device(Device *device) {
+  while (device_lock);
+  device_lock = true;
+  
+  if(devices == nullptr) {
+    printf("\n[ERROR] devices is equal to nullptr, something is wrong\n");
+    return;
+  }
+
+  device_list *temp_dev = devices->next;
+  while(temp_dev != devices) {
+    if(temp_dev->dev != device) {
+      temp_dev = temp_dev->next;
+      continue;
+    }
+
+    temp_dev->prev->next = temp_dev->next;
+    temp_dev->next->prev = temp_dev->prev;
+    MemFree(temp_dev);
+    device_lock = false;
+  }
+  printf("No such device in list\n");
+  device_lock = false;
 }
 
 void make_button(struct button_args args){
@@ -222,7 +273,7 @@ void device_remove_cb(Adapter *adapter, Device *device){
 }
 
 void connect_button_cb(){
-  return;	// }
+  return;
     perror("Device was not found");
 }
 
