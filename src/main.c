@@ -13,6 +13,7 @@
 typedef struct {
   void (*callback)(void);
   Rectangle buttonBox;
+  const char *label;
   Color color;
 } Button;
 
@@ -200,7 +201,7 @@ void remove_device(Device *device) {
 }
 
 void make_button(struct button_args args){
-  insert_button((Button){.callback = args.activate, .buttonBox = (Rectangle){.width = args.width, .height = args.height, .x = args.posX, .y = args.posY}, .color = args.color});
+  insert_button((Button){.callback = args.activate, .buttonBox = (Rectangle){.width = args.width, .height = args.height, .x = args.posX, .y = args.posY}, .color = args.color, .label = args.label});
 }
 
 void DrawRecs(void) {
@@ -211,7 +212,9 @@ void DrawRecs(void) {
 
 void DrawButtons(void) {
   for(int i = 0; i < buttons->taken; i++) {
-    DrawRectangleRec(buttons->buttons[i].buttonBox, buttons->buttons[i].color);
+    Button button = buttons->buttons[i];
+    DrawRectangleRec(button.buttonBox, button.color);
+    DrawText(button.label, button.buttonBox.x+(button.buttonBox.width/2) - ((float)MeasureText(button.label, 20)/2), button.buttonBox.y+10, 20, WHITE);
   }
 }
 
@@ -373,7 +376,7 @@ int main(int argc, char **argv){
     dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
     InitWindow(800, 450, "vblue");
-    SetTargetFPS(60);
+    SetTargetFPS(30);
     init_button_array();
     init_rec_array();
     app_activate();
