@@ -122,19 +122,21 @@ void app_activate(){
     make_button((struct button_args){
         .label = "Connect",
         .width = 200, 40,
-	.posX = 550, 100,
+	.posX = 575, 100,
         .activate = connect_button_cb,
 	.color = GRAY
     });
     make_button((struct button_args){
         .label = "Disconnect",
         .width = 200, 40,
+	.posX = 575, 160,	
         .activate = disconnect_button_cb,
 	.color = GRAY
       });
     make_button((struct button_args){
         .label = "Remove",
         .width = 200, 40,
+	.posX = 575, 220,	
 	.activate = remove_button_cb,
 	.color = GRAY
       });
