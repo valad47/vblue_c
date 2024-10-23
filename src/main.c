@@ -35,7 +35,7 @@ typedef struct {
 
 typedef struct device_list{
   const char *label;
-  Device *device;
+  Device *dev;
   struct device_list *next;
   struct device_list *prev;
 } device_list;
@@ -110,11 +110,11 @@ void insert_button(Button button) {
 }
 
 void insert_device(device_list dev) {
-  while(device_lock);
+  while(devices_lock);
   devices_lock = true;
   
   if(devices == nullptr) {
-    devices = MemAlloc(device_list);
+    devices = MemAlloc(sizeof(device_list));
     devices->next = devices;
     devices->prev = devices;
   }
@@ -123,13 +123,39 @@ void insert_device(device_list dev) {
   memcpy(last_dev->next, &dev, sizeof(device_list));
 
   last_dev->next->next = devices;
+  last_dev->next->prev = last_dev;
   devices->prev = last_dev->next;
   devices_lock = false;
 }
 
+bool contains_device(Device *dev) {
+  device_list *temp_dev = devices->next;
+  while(temp_dev != devices) {
+    if(temp_dev->dev == dev) return true;
+    temp_dev = temp_dev->next;
+  }
+  return false;
+}
+
+void DrawDevices(void) {
+  while(devices_lock);
+  devices_lock = true;
+
+  float posY = 51;
+  device_list *dev_iter = devices->next;
+  while(dev_iter != devices) {
+    DrawRectangle(51, posY, 499, 20, GRAY);
+    DrawText(dev_iter->label, 55, posY+3, 15, WHITE);
+    posY+=21;
+    dev_iter = dev_iter->next;
+  }
+  
+  devices_lock = false;
+}
+
 void remove_device(Device *device) {
-  while (device_lock);
-  device_lock = true;
+  while (devices_lock);
+  devices_lock = true;
   
   if(devices == nullptr) {
     printf("\n[ERROR] devices is equal to nullptr, something is wrong\n");
@@ -146,10 +172,11 @@ void remove_device(Device *device) {
     temp_dev->prev->next = temp_dev->next;
     temp_dev->next->prev = temp_dev->prev;
     MemFree(temp_dev);
-    device_lock = false;
+    devices_lock = false;
+    return;
   }
   printf("No such device in list\n");
-  device_lock = false;
+  devices_lock = false;
 }
 
 void make_button(struct button_args args){
@@ -236,24 +263,13 @@ void app_activate(){
 }
 
 void get_devs(void){
-  /*GList *discovered = binc_adapter_get_devices(adapter);
-    while(discovered){
-      // Device *dev = discovered->data;
-      // GList *devs_copy = devices;
-        //struct list_row *dev_row = g_new0(struct list_row, 1);
-        //dev_row->dev = dev;
-        //make_row(dev_row);
-        if(!devices){
-          //  devices = g_list_alloc();
-	    //  devices->data = dev_row;
-        } else {
-	  //GList *_ = g_list_append(devices, dev_row);
-        }
+  GList *discovered = binc_adapter_get_devices(adapter);
+  while(discovered){
+      Device *dev = discovered->data;
+      
 next_device:
-        discovered = discovered->next;
-	}*/
-  // printf("\rList rows: %d", g_list_length(devices));
-    fflush(stdout);
+      discovered = discovered->next;
+    }
 }
 
 void button1_cb(){
@@ -283,6 +299,7 @@ void disconnect_button_cb(){
 }
 
 void remove_button_cb(){
+  remove_device(NULL);
   return;
   perror("Device was not found");
 }
@@ -301,6 +318,8 @@ int main(int argc, char **argv){
     init_rec_array();
     //   SetExitKey(0);
     app_activate();
+    insert_device((device_list){.label = "It's test!"});
+    insert_device((device_list){.label = "It's test 2!"});
     while(!WindowShouldClose()) {
 
       BeginDrawing();
@@ -309,6 +328,7 @@ int main(int argc, char **argv){
       ProceedButtons();
       DrawButtons();
       DrawRecs();
+      DrawDevices();
       
       EndDrawing();
       if(ExitProgram)
