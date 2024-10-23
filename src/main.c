@@ -55,6 +55,7 @@ struct button_args{
 //
 
 device_list *devices = nullptr;
+device_list *selected_dev = nullptr;
 bool devices_lock = false;
 Adapter *adapter = nullptr;
 GDBusConnection *dbusConnection = nullptr;
@@ -129,6 +130,7 @@ void insert_device(device_list dev) {
 }
 
 bool contains_device(Device *dev) {
+  if(devices == nullptr) return false;
   device_list *temp_dev = devices->next;
   while(temp_dev != devices) {
     if(temp_dev->dev == dev) return true;
@@ -145,7 +147,7 @@ void DrawDevices(void) {
   device_list *dev_iter = devices->next;
   while(dev_iter != devices) {
     DrawRectangle(51, posY, 499, 20, GRAY);
-    DrawText(dev_iter->label, 55, posY+3, 15, WHITE);
+    DrawText(dev_iter->label, 55, posY+3, 16, WHITE);
     posY+=21;
     dev_iter = dev_iter->next;
   }
@@ -266,6 +268,16 @@ void get_devs(void){
   GList *discovered = binc_adapter_get_devices(adapter);
   while(discovered){
       Device *dev = discovered->data;
+      if(contains_device(dev))
+	goto next_device;
+
+      const char *name = binc_device_get_name(dev);
+      if(!name)
+	goto next_device;
+      insert_device((device_list){
+	  .label = name,
+	  .dev = dev
+      });
       
 next_device:
       discovered = discovered->next;
@@ -277,36 +289,41 @@ void button1_cb(){
 }
 
 void discovery_cb(Adapter *adapter, Device *device){
-  return;
+  if(contains_device(device)) return;
+  const char *name = binc_device_get_name(device);
+  if(!name)
+	return;
+  insert_device((device_list){
+      .label = name,
+      .dev = device
+  });
   printf("New device discovered: %s\n", binc_device_get_address(device));
    
 }
 
 void device_remove_cb(Adapter *adapter, Device *device){
-  return;
- 
-    printf("Failed to remove device from list\n");
+  remove_device(device);
 }
 
 void connect_button_cb(){
-  return;
-    perror("Device was not found");
+  if(!selected_dev) return;
+  if(selected_dev == devices) return;
+
+  binc_device_connect(selected_dev->dev);
 }
 
 void disconnect_button_cb(){
-  return;
-    perror("Device was not found");
+  if(!selected_dev) return;
+  if(selected_dev == devices) return;
+
+  binc_device_disconnect(selected_dev->dev);
 }
 
 void remove_button_cb(){
-  remove_device(NULL);
-  return;
-  perror("Device was not found");
-}
+  if(!selected_dev) return;
+  if(selected_dev == devices) return;
 
-void free_buttons(void){
-  MemFree(buttons->buttons);
-  MemFree(buttons);
+  binc_adapter_remove_device(adapter, selected_dev->dev);
 }
 
 int main(int argc, char **argv){
@@ -318,8 +335,6 @@ int main(int argc, char **argv){
     init_rec_array();
     //   SetExitKey(0);
     app_activate();
-    insert_device((device_list){.label = "It's test!"});
-    insert_device((device_list){.label = "It's test 2!"});
     while(!WindowShouldClose()) {
 
       BeginDrawing();
@@ -334,8 +349,6 @@ int main(int argc, char **argv){
       if(ExitProgram)
 	break;
     }
-    buttons->taken = 0;
-    //free_buttons();
     
     CloseWindow();
 }
