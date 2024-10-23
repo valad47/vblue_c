@@ -1,7 +1,3 @@
-//#include <gio/gio.h>
-//#include <glib.h>
-//#include <gtk/gtk.h>
-//#include <gtk/gtkshortcut.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,9 +6,9 @@
 #include <time.h>
 #include <raylib.h>
 
-//#include "device.h"
-//#include "adapter.h"
-//#include "forward_decl.h"
+#include "device.h"
+#include "adapter.h"
+#include "forward_decl.h"
 
 typedef struct {
   void (*callback)(void);
@@ -26,10 +22,27 @@ typedef struct {
   int taken;
 } ButtonArray;
 
-//GList *devices = nullptr;
-//Adapter *adapter = nullptr;
-//GDBusConnection *dbusConnection = nullptr;
+typedef struct {
+  Rectangle rec;
+  Color color;
+} Rec;
+
+typedef struct {
+  Rec* array;
+  int size;
+  int taken;
+} RecArray;
+
+//
+// Variable definitions
+//
+
+GList *devices = nullptr;
+Adapter *adapter = nullptr;
+GDBusConnection *dbusConnection = nullptr;
 ButtonArray *buttons = nullptr;
+RecArray *boxes = nullptr;
+bool ExitProgram = false;
 
 struct button_args{
     const char *label;
@@ -42,8 +55,9 @@ struct button_args{
 };
 
 void get_devs(void);
-void discovery_cb(/*Adapter *adapter, Device *device*/);
-void device_remove_cb(/*Adapter *adapter, Device *device*/);
+void button1_cb(void);
+void discovery_cb(Adapter *adapter, Device *device);
+void device_remove_cb(Adapter *adapter, Device *device);
 void connect_button_cb();
 void disconnect_button_cb();
 void remove_button_cb();
@@ -52,6 +66,25 @@ void init_button_array(){
   buttons = MemAlloc(sizeof(ButtonArray));
   buttons->buttons = MemAlloc(sizeof(Button));
   buttons->size = 1;
+}
+void init_rec_array(){
+  boxes = MemAlloc(sizeof(RecArray));
+  boxes->array = MemAlloc(sizeof(Rec));
+  boxes->size = 1;
+}
+
+void insert_rec(Rec rec) {
+  if(boxes->taken == boxes->size){
+    void* newPtr = MemRealloc(boxes->array, sizeof(Rectangle)*boxes->size*2);
+    if(newPtr == NULL) {
+      exit(1);
+    } else {
+      boxes->array = newPtr;
+    }
+    boxes->size *= 2;
+  }
+  boxes->array[boxes->taken] = rec;
+  boxes->taken++;
 }
 
 void insert_button(Button button) {
@@ -70,6 +103,12 @@ void insert_button(Button button) {
 
 void make_button(struct button_args args){
   insert_button((Button){.callback = args.activate, .buttonBox = (Rectangle){.width = args.width, .height = args.height, .x = args.posX, .y = args.posY}, .color = args.color});
+}
+
+void DrawRecs(void) {
+  for(int i = 0; i < boxes->taken; i++) {
+    DrawRectangleRec(boxes->array[i].rec, boxes->array[i].color);
+  }
 }
 
 void DrawButtons(void) {
@@ -98,18 +137,6 @@ void ProceedButtons(void) {
   }
 }
 
-/*static void append_childs(GtkBox *box, int childs_num, ...){
-    va_list list;
-    va_start(list);
-    for(int i = 0; i < childs_num; i++)
-        gtk_box_append(box, va_arg(list, GtkWidget*));
-    va_end(list);
-    }*/
-
-void button1_cb(){
-
-}
-
 void app_activate(){
     make_button((struct button_args){
         .label = "X",
@@ -118,6 +145,14 @@ void app_activate(){
         .activate = button1_cb,
 	.color = GRAY
       });
+
+    insert_rec((Rec){
+	.rec = {
+	  .width = 500, 350,
+	  .x = 50, 50 
+	},
+	.color = LIGHTGRAY
+    });
 
     make_button((struct button_args){
         .label = "Connect",
@@ -141,12 +176,12 @@ void app_activate(){
 	.color = GRAY
       });
 
-    /*adapter = binc_adapter_get_default(dbusConnection);
+    adapter = binc_adapter_get_default(dbusConnection);
     binc_adapter_power_on(adapter);
     binc_adapter_start_discovery(adapter);
     binc_adapter_set_discovery_cb(adapter, discovery_cb);
     binc_adapter_set_device_removal_cb(adapter, device_remove_cb);
-    get_devs();*/
+    get_devs();
 }
 
 void get_devs(void){
@@ -170,13 +205,17 @@ next_device:
     fflush(stdout);
 }
 
-void discovery_cb(/*Adapter *adapter, Device *device*/){
+void button1_cb(){
+  ExitProgram = true;
+}
+
+void discovery_cb(Adapter *adapter, Device *device){
   return;
-  //printf("New device discovered: %s\n", binc_device_get_address(device));
+  printf("New device discovered: %s\n", binc_device_get_address(device));
    
 }
 
-void device_remove_cb(/*Adapter *adapter, Device *device*/){
+void device_remove_cb(Adapter *adapter, Device *device){
   return;
  
     printf("Failed to remove device from list\n");
@@ -203,11 +242,12 @@ void free_buttons(void){
 }
 
 int main(int argc, char **argv){
-    //dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
+    dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
     InitWindow(800, 450, "vblue");
     SetTargetFPS(60);
     init_button_array();
+    init_rec_array();
     //   SetExitKey(0);
     app_activate();
     while(!WindowShouldClose()) {
@@ -217,8 +257,11 @@ int main(int argc, char **argv){
 
       ProceedButtons();
       DrawButtons();
+      DrawRecs();
       
       EndDrawing();
+      if(ExitProgram)
+	break;
     }
     buttons->taken = 0;
     //free_buttons();
