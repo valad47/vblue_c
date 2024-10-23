@@ -56,6 +56,7 @@ struct button_args{
 
 device_list *devices = nullptr;
 device_list *selected_dev = nullptr;
+device_list *connected = nullptr;
 bool devices_lock = false;
 Adapter *adapter = nullptr;
 GDBusConnection *dbusConnection = nullptr;
@@ -147,13 +148,19 @@ void DrawDevices(void) {
   float posY = 51;
   device_list *dev_iter = devices->next;
   Vector2 mousePos = GetMousePosition();
+
+  connected = nullptr;
   while(dev_iter != devices) {
     Rectangle rec = {51, posY, 499, 20};
     DrawRectangleRec(rec, GRAY);
+    
     if(CheckCollisionPointRec(mousePos, rec)){
       if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 	selected_dev = dev_iter;
     }
+    if(binc_device_get_connection_state(dev_iter->dev) == BINC_CONNECTED)
+      connected = dev_iter;
+    
     DrawText(dev_iter->label, 55, posY+3, 16, selected_dev == dev_iter?SKYBLUE:WHITE);
     posY+=21;
     dev_iter = dev_iter->next;
@@ -365,6 +372,10 @@ int main(int argc, char **argv){
       DrawButtons();
       DrawRecs();
       DrawDevices();
+
+      char text[512] = {};
+      sprintf(text, "Connected device: %s", connected?connected->label:NULL);
+      DrawText(text, 150, 15, 20, BLACK);
       
       EndDrawing();
       if(ExitProgram)
