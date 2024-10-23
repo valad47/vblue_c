@@ -353,6 +353,22 @@ void SelectDevice() {
   }
 }
 
+void ProceedHotkeys() {
+  if(IsKeyPressed(KEY_ENTER)) {
+    if(connected == selected_dev) {
+      buttons->buttons[2].color = BLACK;
+      disconnect_button_cb();
+    } else {
+      buttons->buttons[1].color = BLACK;
+      connect_button_cb();
+    }
+  }
+  if(IsKeyPressed(KEY_BACKSPACE)) {
+    buttons->buttons[3].color = BLACK;
+    remove_button_cb();
+  }
+}
+
 int main(int argc, char **argv){
     dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
@@ -360,7 +376,6 @@ int main(int argc, char **argv){
     SetTargetFPS(60);
     init_button_array();
     init_rec_array();
-    //   SetExitKey(0);
     app_activate();
     while(!WindowShouldClose()) {
 
@@ -369,6 +384,7 @@ int main(int argc, char **argv){
 
       SelectDevice();
       ProceedButtons();
+      ProceedHotkeys();
       DrawButtons();
       DrawRecs();
       DrawDevices();
