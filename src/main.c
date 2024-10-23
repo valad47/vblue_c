@@ -140,14 +140,21 @@ bool contains_device(Device *dev) {
 }
 
 void DrawDevices(void) {
+  if(!devices) return;
   while(devices_lock);
   devices_lock = true;
 
   float posY = 51;
   device_list *dev_iter = devices->next;
+  Vector2 mousePos = GetMousePosition();
   while(dev_iter != devices) {
-    DrawRectangle(51, posY, 499, 20, GRAY);
-    DrawText(dev_iter->label, 55, posY+3, 16, WHITE);
+    Rectangle rec = {51, posY, 499, 20};
+    DrawRectangleRec(rec, GRAY);
+    if(CheckCollisionPointRec(mousePos, rec)){
+      if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+	selected_dev = dev_iter;
+    }
+    DrawText(dev_iter->label, 55, posY+3, 16, selected_dev == dev_iter?SKYBLUE:WHITE);
     posY+=21;
     dev_iter = dev_iter->next;
   }
@@ -173,6 +180,10 @@ void remove_device(Device *device) {
 
     temp_dev->prev->next = temp_dev->next;
     temp_dev->next->prev = temp_dev->prev;
+    if(temp_dev == selected_dev){
+      selected_dev = (!selected_dev || selected_dev == devices)?devices->next:selected_dev->next == devices?devices->next:selected_dev->next;
+    }
+
     MemFree(temp_dev);
     devices_lock = false;
     return;
@@ -326,6 +337,15 @@ void remove_button_cb(){
   binc_adapter_remove_device(adapter, selected_dev->dev);
 }
 
+void SelectDevice() {
+  if(IsKeyPressed(KEY_DOWN)){
+    selected_dev = (!selected_dev || selected_dev == devices)?devices->next:selected_dev->next == devices?devices->next:selected_dev->next;
+  }
+  if(IsKeyPressed(KEY_UP)){
+     selected_dev = (!selected_dev || selected_dev == devices)?devices->prev:selected_dev->prev == devices?devices->prev:selected_dev->prev;
+  }
+}
+
 int main(int argc, char **argv){
     dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
@@ -340,6 +360,7 @@ int main(int argc, char **argv){
       BeginDrawing();
       ClearBackground(WHITE);
 
+      SelectDevice();
       ProceedButtons();
       DrawButtons();
       DrawRecs();
