@@ -7,6 +7,7 @@ pkgs.mkShell {
         gnumake
         cmake
         pkg-config
+		gdb
     ];
     buildInputs = with pkgs; [
         gtk4.dev
