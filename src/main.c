@@ -86,8 +86,7 @@ void init_rec_array() {
 
 void insert_rec(Rec rec) {
   if (boxes->taken == boxes->size) {
-    void *newPtr =
-        MemRealloc(boxes->array, sizeof(Rectangle) * boxes->size * 2);
+    void *newPtr = MemRealloc(boxes->array, sizeof(Rectangle) * boxes->size * 2);
     if (newPtr == NULL) {
       exit(1);
     } else {
@@ -101,8 +100,7 @@ void insert_rec(Rec rec) {
 
 void insert_button(Button button) {
   if (buttons->taken == buttons->size) {
-    void *newPtr =
-        MemRealloc(buttons->buttons, sizeof(Button) * buttons->size * 2);
+    void *newPtr = MemRealloc(buttons->buttons, sizeof(Button) * buttons->size * 2);
     if (newPtr == NULL) {
       exit(1);
     } else {
@@ -115,8 +113,7 @@ void insert_button(Button button) {
 }
 
 void insert_device(device_list dev) {
-  while (devices_lock)
-    ;
+  while (devices_lock);
   devices_lock = true;
 
   if (devices == nullptr) {
@@ -135,13 +132,10 @@ void insert_device(device_list dev) {
 }
 
 bool contains_device(Device *dev) {
-  if (devices == nullptr)
-    return false;
-  device_list *temp_dev = devices->next;
-  while (temp_dev != devices) {
-    if (temp_dev->dev == dev)
-      return true;
-    temp_dev = temp_dev->next;
+  if (devices == nullptr) return false;
+
+  for(device_list *temp_dev = devices->next; temp_dev != devices; temp_dev = temp_dev->next) {
+    if (temp_dev->dev == dev) return true;
   }
   return false;
 }
@@ -154,11 +148,10 @@ void DrawDevices(void) {
   devices_lock = true;
 
   float posY = 51;
-  device_list *dev_iter = devices->next;
   Vector2 mousePos = GetMousePosition();
 
   connected = nullptr;
-  while (dev_iter != devices) {
+  for(device_list *dev_iter = devices->next; dev_iter != devices; dev_iter = dev_iter->next) {
     Rectangle rec = {51, posY, 499, 20};
     DrawRectangleRec(rec, GRAY);
 
@@ -172,15 +165,13 @@ void DrawDevices(void) {
     DrawText(dev_iter->label, 55, posY + 3, 16,
              selected_dev == dev_iter ? SKYBLUE : WHITE);
     posY += 21;
-    dev_iter = dev_iter->next;
   }
 
   devices_lock = false;
 }
 
 void remove_device(Device *device) {
-  while (devices_lock)
-    ;
+  while (devices_lock);
   devices_lock = true;
 
   if (devices == nullptr) {
@@ -188,12 +179,8 @@ void remove_device(Device *device) {
     return;
   }
 
-  device_list *temp_dev = devices->next;
-  while (temp_dev != devices) {
-    if (temp_dev->dev != device) {
-      temp_dev = temp_dev->next;
-      continue;
-    }
+  for(device_list *temp_dev = devices->next; temp_dev != devices; temp_dev = temp_dev->next) {
+    if(temp_dev->dev != device) continue;
 
     temp_dev->prev->next = temp_dev->next;
     temp_dev->next->prev = temp_dev->prev;
@@ -302,19 +289,13 @@ void app_activate() {
 }
 
 void get_devs(void) {
-  GList *discovered = binc_adapter_get_devices(adapter);
-  while (discovered) {
+  for(GList *discovered = binc_adapter_get_devices(adapter); discovered; discovered = discovered->next) {
     Device *dev = discovered->data;
-    if (contains_device(dev))
-      goto next_device;
+    if(contains_device(dev)) continue;
 
     const char *name = binc_device_get_name(dev);
-    if (!name)
-      goto next_device;
+    if(!name) continue;
     insert_device((device_list){.label = name, .dev = dev});
-
-  next_device:
-    discovered = discovered->next;
   }
 }
 
