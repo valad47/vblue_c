@@ -227,7 +227,6 @@ void DrawButtons(void) {
 
 void ProceedButtons(void) {
   Vector2 mousePos = GetMousePosition();
-  printf("\n\033[1F%f %f", mousePos.x, mousePos.y);
   for (int i = 0; i < buttons->taken; i++) {
     Button *button = &buttons->buttons[i];
 
@@ -302,13 +301,11 @@ void get_devs(void) {
 void button1_cb() { ExitProgram = true; }
 
 void discovery_cb(Adapter *adapter, Device *device) {
-  if (contains_device(device))
-    return;
-  const char *name = binc_device_get_name(device);
-  if (!name)
-    return;
-  insert_device((device_list){.label = name, .dev = device});
-  printf("New device discovered: %s\n", binc_device_get_address(device));
+    if (contains_device(device)) return;
+    const char *name = binc_device_get_name(device);
+    if (!name) return;
+    insert_device((device_list){.label = name, .dev = device});
+    printf("New device discovered: %s\n", binc_device_get_address(device));
 }
 
 void device_remove_cb(Adapter *adapter, Device *device) {
@@ -390,6 +387,8 @@ int main(int argc, char **argv) {
     DrawButtons();
     DrawRecs();
     DrawDevices();
+
+    g_main_context_iteration(NULL, FALSE);
 
     char text[512] = {};
     sprintf(text, "Connected device: %s", connected ? connected->label : NULL);
